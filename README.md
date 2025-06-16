@@ -28,7 +28,7 @@ xLights: v2025.06 64bit
 - import argparse 
 
 # Script: map_models_submodels.py
-A script to create a mapping file like models of a primary model and all of its submodels using a GUI interface.
+A script to create a mapping file using like models of a primary model and all of its submodels using a GUI interface.
 An xLights show folder is entered. Then from the models in the xlights_rgbeffectx.xml file in the show folder a primary model is selected.
 Then either like models are selected to map manually or by checking the match by model name to map.\ 
 *NOTE* The match is only for models that have the following trailing characters "-0123456789".\
