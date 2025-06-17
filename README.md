@@ -44,3 +44,16 @@ ex: "map_models_submodels_2025_06_16.log"
 ## Example(s):
     python map_models_submodels.py
     python map_models_submodels.py -l 10
+
+## Images:
+Show Folder Window\
+![Mapping Show Folder Window](https://github.com/user-attachments/assets/32196fde-0803-4406-958c-efd51fade528)\
+Select Primary Model Window\
+![Mapping Select Primary Model Window](https://github.com/user-attachments/assets/35df5fd0-d568-407f-a37f-b32cc51724c4)\
+Select Mapping Model Window\
+![Mapping Select Mapping Models](https://github.com/user-attachments/assets/e28757af-b07d-4964-be35-4a426f08b15b)\
+Sample Status Message\
+![Mapping Status Message](https://github.com/user-attachments/assets/7ba0c1f4-3133-42de-b402-e24788e16fee)
+
+
+
