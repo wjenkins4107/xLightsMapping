@@ -13,8 +13,10 @@ import tkinter as tk
 from tkinter import ttk
 from tkinter import messagebox
 import xml.etree.ElementTree as ET
+import platform
 import sys
 import os
+import winreg
 import datetime as dt
 import logging
 import argparse
@@ -29,6 +31,43 @@ def setup_logging(logging_level):
         format = '%(asctime)s - %(levelname)s - %(threadName)s - %(filename)s:%(lineno)d - %(message)s',
         handlers = [logging.FileHandler(LOG_FILE), logging.StreamHandler(sys.stdout)]
         )
+
+###############################
+# Read Registry Value
+###############################
+def read_registry_value(hive, subkey, value_name):
+    """
+    Reads a value from the Windows Registry.
+
+    Args:
+        hive: The root key (e.g., winreg.HKEY_LOCAL_MACHINE, winreg.HKEY_CURRENT_USER).
+        subkey: The path to the registry key (e.g., "SOFTWARE\\Microsoft\\Windows\\CurrentVersion").
+        value_name: The name of the value to read (e.g., "ProgramFilesDir").
+
+    Returns:
+        The data of the specified registry value, or None if the key or value is not found.
+    """
+
+    try:
+        # Open the registry key
+        key = winreg.OpenKey(hive, subkey, 0, winreg.KEY_READ)
+
+        # Query the value
+        value, reg_type = winreg.QueryValueEx(key, value_name)
+
+        # Close the key
+        winreg.CloseKey(key)
+
+        return value
+
+    except FileNotFoundError:
+        logging.error(f"Registry key or value not found: {subkey}\\{value_name}")
+        return None
+    except Exception as e:
+        logging.error(f"An error occurred: {e}")
+        return None
+
+
 ###############################
 # Calculate XY Coordinates
 ###############################
@@ -167,7 +206,7 @@ def select_mapping_models_window(pri_win, primary_model: str, models_submodels: 
     map_win.title('Select Mapping Models')
     # Set Window Width and Height
     w = 830 # width for map_win
-    h = 600 # height for map_win
+    h = 640 # height for map_win
     # Calculate Window Cordinates
     (x, y) = calcxycoord(map_win, "east", w, h)
     map_win.geometry('%dx%d+%d+%d' % (w, h, x, y))
@@ -184,6 +223,9 @@ def select_mapping_models_window(pri_win, primary_model: str, models_submodels: 
     # Create a frame for the buttons
     buttons_frame = ttk.Frame(map_win, height = 50, width = 400)
     buttons_frame.grid(row = 2, column = 0, padx = 5, pady = 5)
+    # Create a frame for the CTRL Key
+    ctrl_key_frame = ttk.Frame(map_win, height = 20, width = 400)
+    ctrl_key_frame.grid(row = 3, column = 0, padx = 5, pady = 5)
 
     # Primary Model Label 
     primary_model_label = tk.Label(pri_frame, text="Primary Model:", justify=tk.RIGHT)
@@ -226,13 +268,17 @@ def select_mapping_models_window(pri_win, primary_model: str, models_submodels: 
         treev_tree.insert('', tk.END, values=model_values)
 
     # Primary Button
-    primary_button = tk.Button(buttons_frame, text="Map", command=lambda: map_select_button(map_win, treev_tree, primary_model, models_submodels))
+    primary_button = tk.Button(buttons_frame, text="Map Selected", command=lambda: map_select_button(map_win, treev_tree, primary_model, models_submodels))
     primary_button.config( width = 15 )
     primary_button.grid(row=0, column=0, padx=10, pady=10, sticky="e")
     # Close Button
     close_button = tk.Button(buttons_frame, text="Close", command=map_win.destroy)
     close_button.config( width = 15 )
     close_button.grid(row=0, column=1, padx=10, pady=10, sticky="e")
+    # 
+    ctrl_key_label = tk.Label(ctrl_key_frame, text="Hold down the CTRL key to select multiple models", justify=tk.CENTER)
+    ctrl_key_label.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
+    
 
     map_win.mainloop()
     return()
@@ -352,7 +398,7 @@ def select_primary_model_window(parent, rgbeffects_file: str, models_submodels: 
         treev_tree.insert('', tk.END, values=model_values)
 
     # Primary Button
-    primary_button = tk.Button(buttons_frame, text="Primary", command=lambda: primary_select_button(pri_win, treev_tree, models_submodels, match_model_name_var))
+    primary_button = tk.Button(buttons_frame, text="Primary Selected", command=lambda: primary_select_button(pri_win, treev_tree, models_submodels, match_model_name_var))
     primary_button.config( width = 15 )
     primary_button.grid(row=0, column=0, padx=10, pady=10, sticky="e")
     # Close Button
@@ -398,9 +444,8 @@ def do_root_select_button(root, show_folder_entry):
 ##################################
 # Show Folder Window
 ##################################
-def show_folder_window():
+def show_folder_window(show_folder):
     # 
-    show_folder = None
     rgbeffects_file = None
 
     # Define Root Window
@@ -427,15 +472,15 @@ def show_folder_window():
 
     # Show Folder Variable
     show_folder_var = tk.StringVar()
-    show_folder_var.set(str(""))
+    show_folder_var.set(str(show_folder))
 
     # Show Folder Entry    
     show_folder_entry = tk.Entry(root, textvariable=show_folder_var, width=40, justify=tk.LEFT)
     show_folder_entry.grid(row=0, column=1, padx=10, pady=10, sticky="w")
 
     # Show Folder Button
-    root_select_button = tk.Button(root, text="Show Folder", command=lambda: do_root_select_button(root, show_folder_entry.get()))
-    root_select_button.config( width = 15 )
+    root_select_button = tk.Button(root, text="Select Primary Model", command=lambda: do_root_select_button(root, show_folder_entry.get()))
+    root_select_button.config( width = 20 )
     root_select_button.grid(row=1, column=0, padx=10, pady=10, sticky="w")
     
     # Close Button
@@ -451,17 +496,29 @@ def show_folder_window():
 ###############################
 def main():
 
-    cli_parser = argparse.ArgumentParser(prog = 'comparesubmodels.py',
+    cli_parser = argparse.ArgumentParser(prog = 'map_models_submodels.py',
         description = '''%(prog)s is a tool to map a model/submodels to like model/submodels,''')
     
     ### Define Arguments
-
     cli_parser.add_argument('-l', '--logging_level', default = 30, type = int, choices = [0, 10, 20, 30, 40, 50], help = 'Logging Level',
         required = False)
 
     args = cli_parser.parse_args()
-
+    
     logging_level = args.logging_level
+
+    os_name = platform.system()
+    logging.debug(f"Operating System: {os_name}")
+    show_folder = ""
+    # Windows OS?
+    if (os_name == "Windows"):
+        # Read the Xlights LastDir from HKEY_CURRENT_USER
+        Xlights_last_dir = read_registry_value(winreg.HKEY_CURRENT_USER,
+                                               "Software\\Xlights\\",
+                                               "LastDir")
+        if Xlights_last_dir:
+            logging.debug(f"Xlights_last_dir: {Xlights_last_dir}")
+            show_folder = Xlights_last_dir
 
     # Setup Logging
     setup_logging(logging_level)
@@ -471,7 +528,7 @@ def main():
     logging.info("#" * 50)
 
     # Show Folder Window
-    show_folder_window()
+    show_folder_window(show_folder)
     logging.info("#" * 50)
     logging.info("#" * 5 + " Map Model/Submodels End")
     logging.info("#" * 50)
